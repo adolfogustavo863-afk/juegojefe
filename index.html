@@ -1,0 +1,925 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cable Defender - Juego de Disparos Educativo</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Courier New', monospace;
+            background: linear-gradient(135deg, #0f0c29, #302b63, #24243e);
+            overflow: hidden;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+        }
+
+        #gameContainer {
+            width: 100%;
+            max-width: 900px;
+            height: 700px;
+            position: relative;
+            background: linear-gradient(180deg, #1a1a2e 0%, #16213e 100%);
+            border: 4px solid #00ff88;
+            border-radius: 20px;
+            box-shadow: 0 0 50px rgba(0, 255, 136, 0.5);
+            overflow: hidden;
+        }
+
+        #startScreen, #gameOverScreen {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            background: rgba(0, 0, 0, 0.9);
+            z-index: 100;
+            color: #00ff88;
+            text-align: center;
+            padding: 20px;
+        }
+
+        #startScreen h1, #gameOverScreen h1 {
+            font-size: 3em;
+            margin-bottom: 20px;
+            text-shadow: 0 0 20px #00ff88;
+            animation: glow 2s infinite;
+        }
+
+        @keyframes glow {
+            0%, 100% { text-shadow: 0 0 20px #00ff88; }
+            50% { text-shadow: 0 0 40px #00ff88, 0 0 60px #00ff88; }
+        }
+
+        .description {
+            font-size: 1.2em;
+            margin-bottom: 30px;
+            max-width: 600px;
+            line-height: 1.6;
+        }
+
+        .btn {
+            padding: 15px 40px;
+            font-size: 1.3em;
+            background: linear-gradient(135deg, #00ff88, #00cc6a);
+            color: #0f0c29;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: all 0.3s;
+            text-transform: uppercase;
+        }
+
+        .btn:hover {
+            transform: scale(1.1);
+            box-shadow: 0 0 30px #00ff88;
+        }
+
+        #hud {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            right: 20px;
+            display: none;
+            justify-content: space-between;
+            color: #00ff88;
+            font-size: 1.2em;
+            font-weight: bold;
+            text-shadow: 0 0 10px #00ff88;
+            z-index: 50;
+        }
+
+        .hud-item {
+            background: rgba(0, 0, 0, 0.7);
+            padding: 10px 20px;
+            border-radius: 10px;
+            border: 2px solid #00ff88;
+        }
+
+        #player {
+            position: absolute;
+            bottom: 30px;
+            width: 60px;
+            height: 60px;
+            background: linear-gradient(135deg, #00ff88, #00cc6a);
+            border-radius: 10px;
+            display: none;
+            transition: left 0.05s;
+            box-shadow: 0 0 20px #00ff88;
+        }
+
+        #player::before {
+            content: '🛡️';
+            position: absolute;
+            font-size: 40px;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+        }
+
+        .enemy {
+            position: absolute;
+            width: 80px;
+            height: 80px;
+            background: rgba(255, 50, 50, 0.9);
+            border-radius: 10px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            color: white;
+            font-size: 0.8em;
+            padding: 5px;
+            text-align: center;
+            border: 2px solid #ff0000;
+            box-shadow: 0 0 20px rgba(255, 0, 0, 0.5);
+            animation: enemyFloat 3s infinite;
+        }
+
+        .enemy.good {
+            background: rgba(50, 255, 50, 0.9);
+            border-color: #00ff00;
+            box-shadow: 0 0 20px rgba(0, 255, 0, 0.5);
+        }
+
+        @keyframes enemyFloat {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-10px); }
+        }
+
+        .enemy-icon {
+            font-size: 2em;
+        }
+
+        .enemy-text {
+            font-size: 0.7em;
+            font-weight: bold;
+            margin-top: 3px;
+        }
+
+        .boss {
+            position: absolute;
+            width: 200px;
+            height: 200px;
+            background: linear-gradient(135deg, #8b0000, #ff0000);
+            border-radius: 20px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            color: white;
+            border: 5px solid #ff6600;
+            box-shadow: 0 0 50px rgba(255, 0, 0, 0.8);
+            animation: bossShake 0.5s infinite;
+        }
+
+        @keyframes bossShake {
+            0%, 100% { transform: translateX(0); }
+            25% { transform: translateX(-5px); }
+            75% { transform: translateX(5px); }
+        }
+
+        .boss-icon {
+            font-size: 5em;
+        }
+
+        .boss-health-bar {
+            width: 180px;
+            height: 20px;
+            background: rgba(0, 0, 0, 0.5);
+            border-radius: 10px;
+            margin-top: 10px;
+            overflow: hidden;
+            border: 2px solid #ff6600;
+        }
+
+        .boss-health-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #ff0000, #ff6600);
+            transition: width 0.3s;
+        }
+
+        .bullet {
+            position: absolute;
+            width: 8px;
+            height: 20px;
+            background: linear-gradient(180deg, #00ff88, #00cc6a);
+            border-radius: 5px;
+            box-shadow: 0 0 15px #00ff88;
+        }
+
+        .explosion {
+            position: absolute;
+            width: 100px;
+            height: 100px;
+            border-radius: 50%;
+            background: radial-gradient(circle, rgba(255, 255, 0, 1), rgba(255, 100, 0, 0));
+            animation: explode 0.5s forwards;
+            pointer-events: none;
+        }
+
+        @keyframes explode {
+            0% { transform: scale(0); opacity: 1; }
+            100% { transform: scale(2); opacity: 0; }
+        }
+
+        .power-up {
+            position: absolute;
+            width: 50px;
+            height: 50px;
+            font-size: 2em;
+            animation: powerUpFloat 2s infinite;
+        }
+
+        @keyframes powerUpFloat {
+            0%, 100% { transform: translateY(0) rotate(0deg); }
+            50% { transform: translateY(-15px) rotate(180deg); }
+        }
+
+        #wave {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 3em;
+            color: #00ff88;
+            font-weight: bold;
+            text-shadow: 0 0 30px #00ff88;
+            display: none;
+            animation: waveAnim 2s forwards;
+            z-index: 60;
+        }
+
+        @keyframes waveAnim {
+            0% { opacity: 0; transform: translate(-50%, -50%) scale(0.5); }
+            50% { opacity: 1; transform: translate(-50%, -50%) scale(1.2); }
+            100% { opacity: 0; transform: translate(-50%, -50%) scale(1); }
+        }
+
+        .info-popup {
+            position: absolute;
+            background: rgba(0, 0, 0, 0.95);
+            border: 3px solid #00ff88;
+            border-radius: 15px;
+            padding: 15px;
+            color: #00ff88;
+            font-size: 0.9em;
+            max-width: 300px;
+            z-index: 70;
+            animation: popupFade 2s forwards;
+            box-shadow: 0 0 30px rgba(0, 255, 136, 0.5);
+        }
+
+        @keyframes popupFade {
+            0% { opacity: 0; transform: translateY(-20px); }
+            20% { opacity: 1; transform: translateY(0); }
+            80% { opacity: 1; transform: translateY(0); }
+            100% { opacity: 0; transform: translateY(-20px); }
+        }
+
+        .info-title {
+            font-weight: bold;
+            font-size: 1.1em;
+            margin-bottom: 8px;
+            color: #ffff00;
+        }
+
+        .info-result {
+            margin-top: 8px;
+            padding-top: 8px;
+            border-top: 2px solid #00ff88;
+            font-weight: bold;
+        }
+
+        .correct {
+            color: #00ff00;
+        }
+
+        .incorrect {
+            color: #ff0000;
+        }
+
+        #finalStats {
+            margin: 20px 0;
+            font-size: 1.1em;
+        }
+
+        .stat-line {
+            margin: 10px 0;
+            padding: 10px;
+            background: rgba(0, 255, 136, 0.1);
+            border-radius: 5px;
+        }
+
+        .controls {
+            margin-top: 20px;
+            font-size: 0.9em;
+            color: #888;
+        }
+
+        #bossWarning {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(255, 0, 0, 0.3);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            font-size: 4em;
+            color: #ff0000;
+            font-weight: bold;
+            text-shadow: 0 0 50px #ff0000;
+            animation: bossWarningAnim 3s forwards;
+            z-index: 65;
+        }
+
+        @keyframes bossWarningAnim {
+            0%, 100% { opacity: 0; }
+            50% { opacity: 1; }
+        }
+
+        @media (max-width: 768px) {
+            #gameContainer {
+                height: 600px;
+            }
+            #startScreen h1, #gameOverScreen h1 {
+                font-size: 2em;
+            }
+            .description {
+                font-size: 1em;
+            }
+            .info-popup {
+                font-size: 0.8em;
+                max-width: 250px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div id="gameContainer">
+        <div id="startScreen">
+            <h1>⚡ CABLE DEFENDER ⚡</h1>
+            <div class="description">
+                ¡Los errores de certificación están atacando la red! <br><br>
+                🎯 Dispara a los parámetros FUERA de rango (ROJOS)<br>
+                ✅ NO dispares a los valores correctos (VERDES)<br>
+                💡 Aprende con explicaciones al disparar<br>
+                👾 ¡Enfrenta al JEFE FINAL cada 3 oleadas!
+            </div>
+            <div class="controls">
+                🎮 Controles: Flechas ← → o A/D para mover | ESPACIO para disparar
+            </div>
+            <button class="btn" id="startBtn">INICIAR MISIÓN</button>
+        </div>
+
+        <div id="hud">
+            <div class="hud-item">❤️ VIDA: <span id="health">100</span></div>
+            <div class="hud-item">🎯 PUNTOS: <span id="points">0</span></div>
+            <div class="hud-item">🌊 OLEADA: <span id="waveNum">1</span></div>
+        </div>
+
+        <div id="player"></div>
+        <div id="wave"></div>
+        <div id="bossWarning">⚠️ ¡JEFE APARECIÓ! ⚠️</div>
+
+        <div id="gameOverScreen" style="display: none;">
+            <h1>🎮 MISIÓN COMPLETADA 🎮</h1>
+            <div id="finalStats"></div>
+            <button class="btn" id="restartBtn">REINTENTAR</button>
+        </div>
+    </div>
+
+    <script>
+        const gameContainer = document.getElementById('gameContainer');
+        const startScreen = document.getElementById('startScreen');
+        const gameOverScreen = document.getElementById('gameOverScreen');
+        const hud = document.getElementById('hud');
+        const player = document.getElementById('player');
+        const waveDisplay = document.getElementById('wave');
+        const bossWarning = document.getElementById('bossWarning');
+
+        const parameters = [
+            { 
+                name: "Resistencia", 
+                unit: "Ω", 
+                goodRange: [40, 95], 
+                badRange: [100, 150], 
+                icon: "⚡",
+                explanation: "Resistencia baja = transmisión eficiente. Alta resistencia causa pérdida de señal y calentamiento."
+            },
+            { 
+                name: "Capacitancia", 
+                unit: "nF", 
+                goodRange: [45, 58], 
+                badRange: [65, 90], 
+                icon: "🔋",
+                explanation: "Capacitancia excesiva distorsiona señales digitales y limita el ancho de banda."
+            },
+            { 
+                name: "Impedancia", 
+                unit: "Ω", 
+                goodRange: [90, 110], 
+                badRange: [70, 85], 
+                icon: "🌊",
+                explanation: "Debe ser 100Ω ±15%. Impedancia incorrecta causa reflexiones y pérdida de datos."
+            },
+            { 
+                name: "Longitud", 
+                unit: "m", 
+                goodRange: [50, 85], 
+                badRange: [95, 120], 
+                icon: "📏",
+                explanation: "Máximo 90m para enlace permanente. Mayor longitud = excesiva atenuación y errores."
+            },
+            { 
+                name: "Atenuación", 
+                unit: "dB", 
+                goodRange: [10, 20], 
+                badRange: [25, 40], 
+                icon: "📉",
+                explanation: "Pérdida de señal en el cable. Alta atenuación reduce alcance e incrementa errores."
+            },
+            { 
+                name: "NEXT", 
+                unit: "dB", 
+                goodRange: [40, 60], 
+                badRange: [20, 32], 
+                icon: "🔀",
+                explanation: "Diafonía del extremo cercano. Valor alto = mejor (menos interferencia entre pares)."
+            },
+            { 
+                name: "PSNEXT", 
+                unit: "dB", 
+                goodRange: [35, 55], 
+                badRange: [15, 28], 
+                icon: "📊",
+                explanation: "NEXT de suma de potencia. Crítico en Gigabit donde todos los pares transmiten juntos."
+            },
+            { 
+                name: "ACR", 
+                unit: "dB", 
+                goodRange: [20, 40], 
+                badRange: [5, 12], 
+                icon: "📈",
+                explanation: "Relación atenuación-diafonía. ACR alto asegura señal distinguible del ruido."
+            },
+            { 
+                name: "Delay Skew", 
+                unit: "ns", 
+                goodRange: [20, 40], 
+                badRange: [50, 80], 
+                icon: "⏱️",
+                explanation: "Diferencia de tiempo entre pares. Skew alto causa desfase y pérdida de paquetes."
+            }
+        ];
+
+        const bossParameters = [
+            { name: "Cable Corrupto", icon: "💀", question: "Resistencia > 100Ω", answer: "MALO" },
+            { name: "Señal Inestable", icon: "⚡", question: "Impedancia = 100Ω", answer: "BUENO" },
+            { name: "Diafonía Alta", icon: "🔀", question: "NEXT < 35 dB", answer: "MALO" },
+            { name: "Atenuación Crítica", icon: "📉", question: "Atenuación = 15 dB", answer: "BUENO" },
+            { name: "Longitud Excesiva", icon: "📏", question: "Longitud = 95m", answer: "MALO" }
+        ];
+
+        let gameState = {
+            running: false,
+            playerX: 0,
+            health: 100,
+            points: 0,
+            wave: 1,
+            enemies: [],
+            bullets: [],
+            powerUps: [],
+            boss: null,
+            keys: {},
+            lastShot: 0,
+            enemiesDestroyed: 0,
+            bossesDefeated: 0,
+            accuracy: { shots: 0, hits: 0 }
+        };
+
+        document.getElementById('startBtn').addEventListener('click', startGame);
+        document.getElementById('restartBtn').addEventListener('click', restartGame);
+
+        document.addEventListener('keydown', (e) => {
+            gameState.keys[e.key] = true;
+            if (e.key === ' ' && gameState.running) {
+                e.preventDefault();
+                shoot();
+            }
+        });
+
+        document.addEventListener('keyup', (e) => {
+            gameState.keys[e.key] = false;
+        });
+
+        function startGame() {
+            startScreen.style.display = 'none';
+            hud.style.display = 'flex';
+            player.style.display = 'block';
+            gameState.running = true;
+            gameState.playerX = gameContainer.offsetWidth / 2 - 30;
+            player.style.left = gameState.playerX + 'px';
+            
+            spawnWave();
+            gameLoop();
+        }
+
+        function restartGame() {
+            gameState = {
+                running: false,
+                playerX: 0,
+                health: 100,
+                points: 0,
+                wave: 1,
+                enemies: [],
+                bullets: [],
+                powerUps: [],
+                boss: null,
+                keys: {},
+                lastShot: 0,
+                enemiesDestroyed: 0,
+                bossesDefeated: 0,
+                accuracy: { shots: 0, hits: 0 }
+            };
+            
+            document.querySelectorAll('.enemy, .bullet, .power-up, .explosion, .info-popup, .boss').forEach(el => el.remove());
+            gameOverScreen.style.display = 'none';
+            startGame();
+        }
+
+        function spawnWave() {
+            // Boss cada 3 oleadas
+            if (gameState.wave % 3 === 0 && gameState.wave <= 9) {
+                spawnBoss();
+                return;
+            }
+
+            waveDisplay.textContent = `OLEADA ${gameState.wave}`;
+            waveDisplay.style.display = 'block';
+            setTimeout(() => waveDisplay.style.display = 'none', 2000);
+
+            const enemyCount = 4 + gameState.wave;
+            for (let i = 0; i < enemyCount; i++) {
+                setTimeout(() => spawnEnemy(), i * 1200);
+            }
+        }
+
+        function spawnEnemy() {
+            if (!gameState.running) return;
+
+            const param = parameters[Math.floor(Math.random() * parameters.length)];
+            const isBad = Math.random() > 0.5;
+            const range = isBad ? param.badRange : param.goodRange;
+            const value = Math.floor(Math.random() * (range[1] - range[0]) + range[0]);
+
+            const enemy = document.createElement('div');
+            enemy.className = 'enemy' + (isBad ? '' : ' good');
+            enemy.dataset.isBad = isBad;
+            enemy.dataset.param = param.name;
+            enemy.dataset.value = value;
+            enemy.dataset.explanation = param.explanation;
+            enemy.innerHTML = `
+                <div class="enemy-icon">${param.icon}</div>
+                <div class="enemy-text">${param.name}<br>${value} ${param.unit}</div>
+            `;
+            
+            enemy.style.left = Math.random() * (gameContainer.offsetWidth - 80) + 'px';
+            enemy.style.top = '-80px';
+            
+            gameContainer.appendChild(enemy);
+            gameState.enemies.push({
+                element: enemy,
+                isBad: isBad,
+                speed: 0.6 + gameState.wave * 0.1,
+                y: -80,
+                param: param
+            });
+        }
+
+        function spawnBoss() {
+            bossWarning.style.display = 'flex';
+            setTimeout(() => bossWarning.style.display = 'none', 3000);
+
+            waveDisplay.textContent = `¡JEFE DE OLEADA ${gameState.wave}!`;
+            waveDisplay.style.display = 'block';
+            setTimeout(() => waveDisplay.style.display = 'none', 3000);
+
+            setTimeout(() => {
+                const bossData = bossParameters[Math.floor(Math.random() * bossParameters.length)];
+                const boss = document.createElement('div');
+                boss.className = 'boss';
+                boss.innerHTML = `
+                    <div class="boss-icon">${bossData.icon}</div>
+                    <div style="font-size:1.2em; font-weight:bold;">${bossData.name}</div>
+                    <div style="font-size:0.9em; margin-top:10px;">${bossData.question}</div>
+                    <div style="font-size:0.8em; margin-top:5px;">¿Es BUENO o MALO?</div>
+                    <div class="boss-health-bar">
+                        <div class="boss-health-fill" style="width: 100%"></div>
+                    </div>
+                `;
+                
+                boss.style.left = (gameContainer.offsetWidth / 2 - 100) + 'px';
+                boss.style.top = '50px';
+                
+                gameContainer.appendChild(boss);
+                gameState.boss = {
+                    element: boss,
+                    health: 10,
+                    maxHealth: 10,
+                    answer: bossData.answer,
+                    data: bossData
+                };
+            }, 3000);
+        }
+
+        function shoot() {
+            const now = Date.now();
+            if (now - gameState.lastShot < 250) return;
+            
+            gameState.lastShot = now;
+            gameState.accuracy.shots++;
+
+            const bullet = document.createElement('div');
+            bullet.className = 'bullet';
+            bullet.style.left = (gameState.playerX + 26) + 'px';
+            bullet.style.bottom = '90px';
+            
+            gameContainer.appendChild(bullet);
+            gameState.bullets.push({
+                element: bullet,
+                x: gameState.playerX + 26,
+                y: gameContainer.offsetHeight - 90
+            });
+        }
+
+        function showInfoPopup(x, y, param, value, isBad, wasCorrect) {
+            const popup = document.createElement('div');
+            popup.className = 'info-popup';
+            
+            const resultText = wasCorrect ? '✓ ¡CORRECTO!' : '✗ ¡ERROR!';
+            const resultClass = wasCorrect ? 'correct' : 'incorrect';
+            const statusText = isBad ? 'FUERA DE RANGO' : 'DENTRO DE RANGO';
+            
+            popup.innerHTML = `
+                <div class="info-title">${param.name}: ${value} ${param.unit}</div>
+                <div>${param.explanation}</div>
+                <div class="info-result ${resultClass}">
+                    ${resultText}<br>
+                    Estado: ${statusText}
+                </div>
+            `;
+            
+            popup.style.left = Math.min(Math.max(x - 150, 10), gameContainer.offsetWidth - 310) + 'px';
+            popup.style.top = Math.max(y - 100, 100) + 'px';
+            
+            gameContainer.appendChild(popup);
+            setTimeout(() => popup.remove(), 2000);
+        }
+
+        function gameLoop() {
+            if (!gameState.running) return;
+
+            // Mover jugador
+            const speed = 8;
+            if ((gameState.keys['ArrowLeft'] || gameState.keys['a'] || gameState.keys['A']) && gameState.playerX > 0) {
+                gameState.playerX -= speed;
+            }
+            if ((gameState.keys['ArrowRight'] || gameState.keys['d'] || gameState.keys['D']) && gameState.playerX < gameContainer.offsetWidth - 60) {
+                gameState.playerX += speed;
+            }
+            player.style.left = gameState.playerX + 'px';
+
+            // Mover enemigos
+            gameState.enemies.forEach((enemy, index) => {
+                enemy.y += enemy.speed;
+                enemy.element.style.top = enemy.y + 'px';
+
+                if (enemy.y > gameContainer.offsetHeight) {
+                    if (enemy.isBad) {
+                        gameState.health -= 15;
+                        updateHUD();
+                    }
+                    enemy.element.remove();
+                    gameState.enemies.splice(index, 1);
+                }
+            });
+
+            // Mover balas
+            gameState.bullets.forEach((bullet, index) => {
+                bullet.y -= 12;
+                bullet.element.style.bottom = (gameContainer.offsetHeight - bullet.y) + 'px';
+
+                if (bullet.y < 0) {
+                    bullet.element.remove();
+                    gameState.bullets.splice(index, 1);
+                    return;
+                }
+
+                // Colisión con boss
+                if (gameState.boss) {
+                    const bulletRect = bullet.element.getBoundingClientRect();
+                    const bossRect = gameState.boss.element.getBoundingClientRect();
+
+                    if (
+                        bulletRect.left < bossRect.right &&
+                        bulletRect.right > bossRect.left &&
+                        bulletRect.top < bossRect.bottom &&
+                        bulletRect.bottom > bossRect.top
+                    ) {
+                        gameState.boss.health--;
+                        const healthPercent = (gameState.boss.health / gameState.boss.maxHealth) * 100;
+                        gameState.boss.element.querySelector('.boss-health-fill').style.width = healthPercent + '%';
+                        
+                        createExplosion(bulletRect.left, bulletRect.top);
+                        bullet.element.remove();
+                        gameState.bullets.splice(index, 1);
+
+                        if (gameState.boss.health <= 0) {
+                            gameState.points += 500;
+                            gameState.bossesDefeated++;
+                            gameState.boss.element.remove();
+                            gameState.boss = null;
+                            
+                            if (gameState.wave < 9) {
+                                gameState.wave++;
+                                updateHUD();
+                                setTimeout(() => spawnWave(), 2000);
+                            } else {
+                                endGame(true);
+                                return;
+                            }
+                        }
+                        updateHUD();
+                        return;
+                    }
+                }
+
+                // Colisión con enemigos
+                gameState.enemies.forEach((enemy, enemyIndex) => {
+                    const bulletRect = bullet.element.getBoundingClientRect();
+                    const enemyRect = enemy.element.getBoundingClientRect();
+
+                    if (
+                        bulletRect.left < enemyRect.right &&
+                        bulletRect.right > enemyRect.left &&
+                        bulletRect.top < enemyRect.bottom &&
+                        bulletRect.bottom > enemyRect.top
+                    ) {
+                        createExplosion(enemyRect.left, enemyRect.top);
+                        
+                        const wasCorrect = enemy.isBad;
+                        showInfoPopup(
+                            enemyRect.left,
+                            enemyRect.top,
+                            enemy.param,
+                            enemy.element.dataset.value,
+                            enemy.isBad,
+                            wasCorrect
+                        );
+
+                        if (wasCorrect) {
+                            gameState.points += 150;
+                            gameState.accuracy.hits++;
+                            gameState.enemiesDestroyed++;
+                        } else {
+                            gameState.health -= 10;
+                            gameState.points = Math.max(0, gameState.points - 75);
+                        }
+
+                        enemy.element.remove();
+                        gameState.enemies.splice(enemyIndex, 1);
+                        bullet.element.remove();
+                        gameState.bullets.splice(index, 1);
+                        
+                        updateHUD();
+
+                        if (Math.random() > 0.6) {
+                            spawnPowerUp(enemyRect.left, enemyRect.top);
+                        }
+                    }
+                });
+            });
+
+            // Mover power-ups
+            gameState.powerUps.forEach((powerUp, index) => {
+                powerUp.y += 2;
+                powerUp.element.style.top = powerUp.y + 'px';
+
+                const powerUpRect = powerUp.element.getBoundingClientRect();
+                const playerRect = player.getBoundingClientRect();
+
+                if (
+                    powerUpRect.left < playerRect.right &&
+                    powerUpRect.right > playerRect.left &&
+                    powerUpRect.top < playerRect.bottom &&
+                    powerUpRect.bottom > playerRect.top
+                ) {
+                    gameState.health = Math.min(100, gameState.health + 25);
+                    updateHUD();
+                    powerUp.element.remove();
+                    gameState.powerUps.splice(index, 1);
+                }
+
+                if (powerUp.y > gameContainer.offsetHeight) {
+                    powerUp.element.remove();
+                    gameState.powerUps.splice(index, 1);
+                }
+            });
+
+            // Verificar condiciones
+            if (gameState.health <= 0) {
+                endGame(false);
+                return;
+            }
+
+            if (gameState.enemies.length === 0 && !gameState.boss && gameState.running) {
+                if (gameState.wave < 9) {
+                    gameState.wave++;
+                    updateHUD();
+                    setTimeout(() => spawnWave(), 2000);
+                } else {
+                    endGame(true);
+                    return;
+                }
+            }
+
+            requestAnimationFrame(gameLoop);
+        }
+
+        function createExplosion(x, y) {
+            const explosion = document.createElement('div');
+            explosion.className = 'explosion';
+            explosion.style.left = x + 'px';
+            explosion.style.top = y + 'px';
+            gameContainer.appendChild(explosion);
+            setTimeout(() => explosion.remove(), 500);
+        }
+
+        function spawnPowerUp(x, y) {
+            const powerUp = document.createElement('div');
+            powerUp.className = 'power-up';
+            powerUp.textContent = '💚';
+            powerUp.style.left = x + 'px';
+            powerUp.style.top = y + 'px';
+            gameContainer.appendChild(powerUp);
+            gameState.powerUps.push({
+                element: powerUp,
+                y: y
+            });
+        }
+
+        function updateHUD() {
+            document.getElementById('health').textContent = Math.max(0, gameState.health);
+            document.getElementById('points').textContent = gameState.points;
+            document.getElementById('waveNum').textContent = gameState.wave;
+        }
+
+        function endGame(victory) {
+            gameState.running = false;
+            hud.style.display = 'none';
+            player.style.display = 'none';
+
+            const accuracy = gameState.accuracy.shots > 0 
+                ? Math.round((gameState.accuracy.hits / gameState.accuracy.shots) * 100) 
+                : 0;
+
+            let message = victory 
+                ? '¡VICTORIA! Has protegido la red exitosamente 🎉' 
+                : '¡DERROTA! La red ha sido comprometida 💥';
+
+            let performanceMsg = '';
+            if (accuracy >= 80) performanceMsg = '¡Experto en certificación! 🏆';
+            else if (accuracy >= 60) performanceMsg = '¡Buen conocimiento técnico! 👏';
+            else if (accuracy >= 40) performanceMsg = 'Sigue practicando 📚';
+            else performanceMsg = 'Necesitas más entrenamiento 💪';
+
+            document.getElementById('finalStats').innerHTML = `
+                <h2>${message}</h2>
+                <div class="stat-line">🎯 Puntuación Final: ${gameState.points}</div>
+                <div class="stat-line">🌊 Oleadas Completadas: ${gameState.wave}</div>
+                <div class="stat-line">💥 Enemigos Eliminados: ${gameState.enemiesDestroyed}</div>
+                <div class="stat-line">👾 Jefes Derrotados: ${gameState.bossesDefeated}</div>
+                <div class="stat-line">🎪 Precisión: ${accuracy}%</div>
+                <div class="stat-line" style="color: #ffff00; font-size: 1.2em; margin-top: 20px;">
+                    ${performanceMsg}
+                </div>
+            `;
+
+            gameOverScreen.style.display = 'flex';
+        }
+    </script>
+</body>
+</html>
